@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>沖繩六天五夜</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+/* Light only, by choice: it is read outdoors in daylight.
+   Layout: a hand-made travel booklet on grid paper. Entries are written straight onto the page, no cards;
+   the one loud element is the highlighter, marking times, the open tab and the numbered stops on each day's map.
+   No one's name is ever printed: the page is public. */
+:root {
+  --paper: #fbfcfd;
+  --grid: #e3eaf0;
+  --ink: #1f2b4d;
+  --pencil: #6b7590;
+  --rule: #c9d3dd;
+  --alert: #b4381f;
+  --hl0: rgba(255, 210, 0, .5);
+  --hl1: rgba(255, 98, 160, .32);
+  --hl2: rgba(96, 214, 96, .38);
+  --hl3: rgba(70, 165, 255, .32);
+  --swipe: rgba(255, 210, 0, .5);
+  --on-swipe: #1f2b4d;
+  --hand: "LXGW WenKai TC", "Kaiti TC", "DFKai-SB", "BiauKai", serif;
+  --sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; color: var(--ink);
+  font: 16px/1.65 var(--sans);
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 22px 22px;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper); }
+a { color: inherit; text-decoration-color: var(--pencil); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 3px; }
+.wrap {
+  max-width: 640px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.swipe { background: var(--swipe); color: var(--on-swipe); border-radius: 2px 6px 3px 5px; padding: 0 4px; }
+
+header.trip { padding-block: 32px 18px; display: grid; gap: 8px; }
+h1 { margin: 0; font: 700 clamp(30px, 8vw, 44px)/1.2 var(--hand); text-wrap: balance; }
+.when { color: var(--pencil); font-size: 15px; }
+.pencil-note { font: 400 16px var(--hand); color: var(--pencil); border-left: 2px solid var(--rule); padding-left: 10px; }
+
+nav.days { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); border-bottom: 1px solid var(--rule); }
+nav.days .wrap { display: flex; gap: 6px; overflow-x: auto; padding-block: 10px; scrollbar-width: none; }
+nav.days .wrap::-webkit-scrollbar { display: none; }
+.tab { flex: none; text-decoration: none; font: 400 17px/1.3 var(--hand); color: var(--pencil); padding: 2px 8px; }
+.tab small { font-size: 13px; margin-left: 2px; }
+.tab[aria-current="page"] { color: var(--ink); font-weight: 700; background: var(--swipe); color: var(--on-swipe); border-radius: 2px 6px 3px 5px; }
+
+main { padding-block: 24px 40px; display: grid; gap: 30px; }
+.day-head { display: grid; gap: 2px; }
+.day-head .nth { font: 400 17px var(--hand); color: var(--pencil); font-variant-numeric: tabular-nums; }
+h2 { margin: 0; font: 700 30px/1.25 var(--hand); text-wrap: balance; }
+.rain { font: 400 16px var(--hand); color: var(--pencil); margin-top: 6px; }
+.map-block { display: grid; gap: 6px; }
+.map { height: 300px; max-width: 100%; border: 1px solid var(--rule); border-radius: 4px; background: var(--paper); }
+.map-link { font-size: 14px; }
+.pin { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--swipe); color: var(--on-swipe); border: 2px solid var(--ink); font: 700 13px/1 var(--sans); }
+.pin.home { background: var(--paper); }
+.no { display: inline-grid; place-items: center; min-width: 22px; height: 22px; margin-right: 6px; border-radius: 50%; border: 1.5px solid var(--ink); font: 700 12px/1 var(--sans); vertical-align: 3px; }
+
+.route { display: grid; }
+.stop { display: grid; grid-template-columns: 58px minmax(0, 1fr); column-gap: 14px; }
+.time { text-align: right; padding-top: 2px; font: 700 16px/1.4 var(--sans); font-variant-numeric: tabular-nums; }
+.time .swipe { display: inline-block; }
+.time small { display: block; font-weight: 400; font-size: 13px; color: var(--pencil); margin-top: 2px; }
+.entries { border-left: 2px dashed var(--rule); padding: 0 0 26px 16px; display: grid; gap: 10px; min-width: 0; }
+.stop:last-child .entries { padding-bottom: 4px; }
+.entry { display: grid; gap: 4px; min-width: 0; }
+.name { margin: 0; font: 700 20px/1.35 var(--hand); }
+.what { color: var(--pencil); font-size: 14px; }
+.stop.k-free .name, .stop.k-transit .name { font-weight: 400; color: var(--pencil); }
+.note { font-size: 15px; }
+.facts { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 2px; font-size: 14px; }
+.facts li { display: flex; gap: 8px; align-items: baseline; }
+.checked { flex: none; color: var(--ink); font-weight: 700; font-size: 12px; }
+.unchecked { flex: none; color: var(--pencil); font-size: 12px; border-bottom: 1px dashed var(--pencil); }
+.facts a { color: var(--pencil); font-size: 13px; }
+.book { color: var(--alert); font-size: 14px; font-weight: 500; }
+.booked { font-size: 14px; font-weight: 500; }
+.go { font-size: 14px; }
+.leg { font-size: 14px; color: var(--pencil); margin: -4px 0 2px; display: flex; flex-wrap: wrap; gap: 0 10px; }
+.leg strong { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+.alts { display: grid; gap: 12px; border-top: 1px dashed var(--rule); padding-top: 14px; }
+.alts .swap { color: var(--pencil); font-size: 14px; }
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px 20px; }
+.split .entry { border-top: 3px solid var(--hl, var(--hl0)); padding-top: 6px; }
+
+section.block { display: grid; gap: 8px; }
+h3 { margin: 0; font: 700 20px var(--hand); }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.list li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.list .d { color: var(--pencil); font-size: 14px; font-variant-numeric: tabular-nums; }
+.ov { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.ov a { display: grid; gap: 2px; text-decoration: none; }
+.ov .d { color: var(--pencil); font: 400 16px var(--hand); }
+.ov .t { font: 700 22px/1.3 var(--hand); }
+.ov .s { color: var(--pencil); font-size: 14px; }
+footer { color: var(--pencil); font: 400 15px var(--hand); padding-block: 0 36px; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+<header class="trip wrap" id="head"></header>
+<nav class="days" aria-label="哪一天"><div class="wrap" id="tabs"></div></nav>
+<main class="wrap" id="view"></main>
+<footer class="wrap" id="foot"></footer>
+<script>
+const TRIP = {"title": "沖繩六天五夜", "destination": "沖繩", "start": "2026-11-24", "end": "2026-11-29", "timezone": "Asia/Tokyo", "people": ["Eli", "大學同學"], "status": "verified", "checked_at": "2026-11-17", "lodging": [{"name": "Hotel Torifito 那霸旭橋", "area": "那霸 旭橋站旁", "query": "ホテル・トリフィート那覇旭橋", "lat": 26.2143218, "lng": 127.6727766, "nights": ["2026-11-24", "2026-11-25", "2026-11-26", "2026-11-27", "2026-11-28"]}], "notes": [{"text": "飯店停車場一晚 1,800 円，28 台，不能預約，14:00 到隔天 11:00；滿了會介紹附近停車場", "status": "verified", "source": "https://yado.knt.co.jp/st/S470508/"}, {"text": "日落：11/15 是 17:40，12/1 是 17:37，這幾天大約 17:38", "status": "verified", "source": "https://eco.mtk.nao.ac.jp/koyomi/dni/2026/s4811.html"}, {"text": "首里城正殿 11/23 剛重新開放，要事先預約 30 分鐘一格的時段，門票 1,000 円", "status": "verified", "source": "https://travel.watch.impress.co.jp/docs/news/2133105.html"}, {"text": "租車店地址各網站寫的不一樣（若狹一丁目 / 三丁目），出發前對一下預約信", "status": "unverified"}], "days": [{"date": "2026-11-24", "theme": "晚上落地，直接回飯店", "items": [{"time": "20:40", "kind": "transit", "name": "那霸機場落地", "query": "那覇空港", "lat": 26.1966997, "lng": 127.6489521, "for": []}, {"time": "21:30", "kind": "transit", "name": "單軌電車到旭橋站，Check in", "for": [], "transit": {"mode": "transit", "minutes": 12, "desc": "ゆいレール 那覇空港 → 旭橋", "status": "estimated"}}, {"time": "22:00", "kind": "free", "name": "附近超商買宵夜，早點睡", "for": []}]}, {"date": "2026-11-25", "theme": "取車，南部繞一圈", "rain_plan": "玉泉洞是鐘乳洞不怕雨，海邊行程改去 iias 沖縄豊崎逛", "items": [{"time": "10:00", "kind": "transit", "name": "Relax Car Rental 取車", "query": "Relax Car Rental 那覇", "lat": 26.220547, "lng": 127.67408, "for": [], "fixed": true, "booking": "11/25 10:00 取車，11/28 10:00 同一家還", "transit": {"mode": "walk", "minutes": 10, "desc": "從飯店走過去", "status": "estimated"}, "facts": [{"text": "8:00–20:00", "status": "verified", "source": "https://www.funliday.com/pois/27407899"}]}, {"time": "11:00", "end": "12:30", "kind": "place", "name": "沖繩世界・玉泉洞", "query": "おきなわワールド", "lat": 26.1394397, "lng": 127.7504286, "for": [], "note": "鐘乳洞很長，走完大概一小時", "transit": {"mode": "drive", "minutes": 35, "status": "estimated"}, "facts": [{"text": "9:00–17:30，16:00 最後入場，全年無休；停車免費", "status": "verified", "source": "https://www.walkerplus.com/spot/ar1047s383235/"}, {"text": "門票大人 2,000 円", "status": "verified", "source": "https://www.walkerplus.com/spot/ar1047s383235/"}]}, {"time": "12:45", "kind": "food", "name": "中本天婦羅", "query": "中本てんぷら店 奥武島", "lat": 26.1315553, "lng": 127.7719413, "for": [], "note": "奧武島的名店，排太長就換島上其他攤", "transit": {"mode": "drive", "minutes": 10, "status": "estimated"}, "facts": [{"text": "10:30–18:00（17:00 最後點餐），週四休", "status": "verified", "source": "https://rurubu.jp/andmore/spot/80043050"}]}, {"time": "13:30", "kind": "place", "name": "奧武島（貓島）散步", "query": "奥武島 南城市", "lat": 26.1297064, "lng": 127.7734784, "for": [], "transit": {"mode": "walk", "minutes": 5, "status": "estimated"}}, {"time": "14:30", "kind": "coffee", "name": "浜辺の茶屋", "query": "浜辺の茶屋 南城", "lat": 26.1335318, "lng": 127.7846118, "for": [], "note": "窗外就是海，退潮時更好看", "transit": {"mode": "drive", "minutes": 10, "status": "estimated"}, "facts": [{"text": "平日 8:00–18:00（17:00 最後點餐），無固定休；有停車場", "status": "verified", "source": "https://rurubu.jp/andmore/spot/80043048"}]}, {"time": "16:45", "kind": "place", "name": "瀨長島 Umikaji Terrace 看夕陽", "query": "瀬長島ウミカジテラス", "lat": 26.1763883, "lng": 127.6404055, "for": [], "note": "白色階梯面西邊的海，日落大約 17:38", "transit": {"mode": "drive", "minutes": 45, "status": "estimated"}, "facts": [{"text": "10:00–21:00，依店家不同；停車場 600 台", "status": "verified", "source": "https://rurubu.jp/andmore/spot/80085405"}, {"text": "停車要不要錢", "status": "unverified"}]}, {"time": "18:30", "kind": "food", "name": "島唄と地料理 とぅばらーま 國際通店", "query": "とぅばらーま 国際通り店", "for": [], "note": "沖繩料理加島唄現場演唱；原本排的大安丸週三公休，換成這家", "facts": [{"text": "全年無休；Tabelog 3.44；牧志站走路 1 分", "status": "verified", "source": "https://icotto.jp/restaurants/48406"}], "transit": {"mode": "drive", "minutes": 20, "desc": "車先停回飯店再搭單軌", "status": "estimated"}}], "alternates": [{"kind": "place", "name": "齋場御嶽", "query": "斎場御嶽 南城市", "swap_for": "沖繩世界・玉泉洞", "note": "世界遺產，森林裡的聖地，比玉泉洞安靜", "facts": [{"text": "11 月 9:00–17:30，17:00 最後入場", "status": "verified", "source": "https://www.walkerplus.com/spot/ar1047s05558/data.html"}]}, {"kind": "place", "name": "知念岬公園", "query": "知念岬公園", "swap_for": "浜辺の茶屋", "note": "突出去的海岬，整片海景，免費"}, {"kind": "place", "name": "和平祈念公園", "query": "平和祈念公園 糸満", "swap_for": "瀨長島 Umikaji Terrace 看夕陽", "note": "想安靜一點的話，面海的大草地"}], "evening": [{"kind": "shop", "name": "柏青哥", "query": "パチンコ 那覇市松尾2-23-17", "note": "國際通旁邊就有，玩一點體驗就好", "facts": [{"text": "那霸松尾 2-23-17 有一間 9:00–23:45", "status": "verified", "source": "https://p-town.dmm.com/shops/okinawa/area/47201"}]}, {"kind": "food", "name": "國際通屋台村", "query": "国際通り屋台村 那覇", "note": "一排小攤子，喝一杯、吃點小東西續攤", "facts": [{"text": "11:00–24:00，全年無休，依攤位不同；牧志站走路 4 分", "status": "verified", "source": "https://www.gltjp.com/ja/directory/item/13966/"}]}]}, {"date": "2026-11-26", "theme": "中部：寶可夢中心跟美國村", "rain_plan": "Aeon Mall 本來就在室內，美國村改成多待在 mall", "items": [{"time": "11:00", "end": "12:30", "kind": "food", "name": "ちいかわレストラン（沖繩 PARCO CITY）", "query": "ちいかわレストラン 沖縄PARCO CITY", "lat": 26.260947, "lng": 127.6977825, "for": [], "note": "今年 2 月開的常設店，有沖繩限定的日曬風獅爺塔可飯；不吃也能逛周邊店", "booking": "官網預約優先，出發前先訂", "facts": [{"text": "10:00–22:00，餐點 21:00 最後點餐", "status": "verified", "source": "https://news.mynavi.jp/article/20260113-3957274/"}], "transit": {"mode": "drive", "minutes": 20, "desc": "10:30 從飯店出發", "status": "estimated"}}, {"time": "13:00", "end": "15:00", "kind": "shop", "name": "寶可夢中心（Aeon Mall 沖繩來客夢）", "query": "イオンモール沖縄ライカム", "lat": 26.3142262, "lng": 127.7959208, "for": [], "note": "寶可夢中心在這個 mall 裡", "transit": {"mode": "drive", "minutes": 20, "status": "estimated"}, "facts": [{"text": "營業時間（mall 一般 10:00–22:00）", "status": "unverified"}]}, {"time": "15:00", "kind": "coffee", "name": "Zhyvago Coffee Works", "query": "ZHYVAGO COFFEE WORKS 北谷", "lat": 26.3159034, "lng": 127.7537596, "for": [], "transit": {"mode": "drive", "minutes": 15, "status": "estimated"}, "facts": [{"text": "9:00 開；關門有說 17:00、有說日落，不定休，兩個來源對不上", "status": "unverified"}]}, {"time": "15:45", "kind": "place", "name": "美濱美國村", "query": "美浜アメリカンビレッジ", "lat": 26.3146425, "lng": 127.7579883, "for": [], "note": "待到日落，大約 17:38，海邊那側最好看", "transit": {"mode": "walk", "minutes": 5, "status": "estimated"}}, {"time": "18:30", "kind": "food", "name": "Ichariba Co Lab", "for": [], "query": "Ichariba Co Lab 北谷", "note": "美國村後面走路 3 分，義式加居酒屋，Tabelog 3.5", "facts": [{"text": "晚餐 18:00–24:00（23:00 最後點餐），週日、國定假日休", "status": "verified", "source": "https://gurunavi.com/en/fb38001/rst"}], "transit": {"mode": "walk", "minutes": 3, "status": "estimated"}}], "alternates": [{"kind": "place", "name": "港川外人住宅", "query": "港川ステイツサイドタウン 浦添", "swap_for": "美濱美國村", "note": "美軍舊宿舍改成的白色平房，一整區咖啡店跟雜貨店，很好拍；就在 PARCO CITY 去寶可夢中心的路上", "facts": [{"text": "店家各自營業，時間不一樣", "status": "verified", "source": "https://www.gltjp.com/ja/directory/item/17279/"}, {"text": "附近投幣停車 30 分 100 円起", "status": "unverified"}]}, {"kind": "place", "name": "中城城跡", "query": "中城城跡", "swap_for": "美濱美國村", "note": "世界遺產，石牆很完整，站上去兩邊的海都看得到；從寶可夢中心開 15 分", "facts": [{"text": "8:30–17:00，全年無休，大人 500 円", "status": "verified", "source": "https://www.gltjp.com/ja/directory/item/18379/"}]}], "evening": [{"kind": "place", "name": "美國村晚上散步", "query": "美浜アメリカンビレッジ", "note": "燈都亮起來，海邊步道吹風；開回那霸大概 40 分", "facts": [{"text": "晚上開到幾點", "status": "unverified"}]}]}, {"date": "2026-11-27", "theme": "北部：古宇利島", "rain_plan": "改去美麗海水族館，就在備瀨旁邊", "items": [{"time": "11:15", "kind": "place", "name": "古宇利大橋", "query": "古宇利大橋", "lat": 26.6859817, "lng": 128.016945, "for": [], "note": "過橋前在屋我地島那側停下來拍", "transit": {"mode": "drive", "minutes": 105, "desc": "9:30 從飯店出發，走沖繩自動車道", "status": "estimated"}}, {"time": "11:45", "kind": "place", "name": "Tiinu 海灘（心形岩）", "query": "ティーヌ浜", "lat": 26.7137837, "lng": 128.0148404, "for": [], "transit": {"mode": "drive", "minutes": 10, "status": "estimated"}}, {"time": "12:30", "kind": "food", "name": "L LOTA（古宇利島 ONE SUITE）", "for": [], "query": "L LOTA 古宇利島", "note": "高台上看海的餐廳，法式吐司是招牌", "facts": [{"text": "午餐 12:00–15:30（14:30 最後點餐），週四休；午餐不收預約", "status": "verified", "source": "https://icotto.jp/restaurants/9673"}]}, {"time": "14:30", "kind": "place", "name": "備瀨福木林道", "query": "備瀬のフクギ並木", "lat": 26.7014167, "lng": 127.8800364, "for": [], "note": "樹隧道一路走到海邊，很好拍", "transit": {"mode": "drive", "minutes": 30, "status": "estimated"}}, {"time": "16:00", "kind": "coffee", "name": "咖啡：備瀨附近，還沒找到", "for": []}, {"time": "19:00", "kind": "food", "name": "沖繩料理 なかむら家 久茂地店", "query": "なかむら家 久茂地", "for": [], "note": "車停回飯店走過去，開了一整天不用再跑遠", "facts": [{"text": "週日、國定假日休（只有一個來源）", "status": "unverified"}], "transit": {"mode": "drive", "minutes": 90, "desc": "17:00 開回那霸", "status": "estimated"}}], "alternates": [{"kind": "place", "name": "美麗海水族館", "query": "沖縄美ら海水族館", "swap_for": "備瀨福木林道", "note": "就在旁邊，下雨也能去", "facts": [{"text": "11 月營業時間", "status": "unverified"}]}, {"kind": "place", "name": "今歸仁城跡", "query": "今帰仁城跡", "swap_for": "備瀨福木林道", "note": "山上的城牆，看得到海", "facts": [{"text": "8:00–18:00，全年無休", "status": "verified", "source": "https://rurubu.jp/andmore/spot/80043120"}]}, {"kind": "place", "name": "古宇利海洋塔", "query": "古宇利オーシャンタワー", "swap_for": "Tiinu 海灘（心形岩）", "note": "從高處看古宇利大橋", "facts": [{"text": "10:00–18:00，17:30 最後入場", "status": "verified", "source": "https://rurubu.jp/andmore/spot/80043126"}]}, {"kind": "food", "name": "琉球茶房 あしびうなぁ", "query": "琉球茶房あしびうなぁ 首里", "swap_for": "沖繩料理 なかむら家 久茂地店", "note": "首里的古民家，有庭園座位", "facts": [{"text": "營業時間查不到", "status": "unverified"}]}], "evening": [{"kind": "food", "name": "國際通屋台村", "query": "国際通り屋台村 那覇", "note": "開了一整天車，走過去喝一杯就好", "facts": [{"text": "11:00–24:00，全年無休，依攤位不同；牧志站走路 4 分", "status": "verified", "source": "https://www.gltjp.com/ja/directory/item/13966/"}]}]}, {"date": "2026-11-28", "theme": "還車，首里城跟國際通", "items": [{"time": "10:00", "kind": "transit", "name": "Relax Car Rental 還車", "query": "Relax Car Rental 那覇", "lat": 26.220547, "lng": 127.67408, "for": [], "fixed": true, "booking": "10:00 還車，還之前先加滿油", "transit": {"mode": "drive", "minutes": 5, "status": "estimated"}, "facts": [{"text": "8:00–20:00", "status": "verified", "source": "https://www.funliday.com/pois/27407899"}]}, {"time": "10:20", "kind": "place", "name": "波上宮", "query": "波上宮", "lat": 26.2205598, "lng": 127.6711359, "for": [], "note": "蓋在海邊懸崖上的神社", "transit": {"mode": "walk", "minutes": 5, "status": "estimated"}}, {"time": "11:30", "kind": "food", "name": "第一牧志公設市場", "query": "第一牧志公設市場", "lat": 26.2145462, "lng": 127.6882881, "for": [], "note": "一樓買海鮮，二樓請店家代煮", "transit": {"mode": "transit", "minutes": 20, "desc": "公車或計程車", "status": "estimated"}, "facts": [{"text": "8:00–21:00，二樓食堂 20:00 最後點餐；每月第四個週日休", "status": "verified", "source": "https://www.airtrip.jp/travel-column/15459"}]}, {"time": "13:00", "end": "15:00", "kind": "place", "name": "首里城（正殿 11/23 剛重新開放）", "query": "首里城公園", "lat": 26.2170014, "lng": 127.7193727, "for": [], "note": "這趟最剛好的意外收穫，重建好的正殿可以進去看", "booking": "正殿要事先預約 30 分鐘一格的時段，出發前上官網訂", "facts": [{"text": "正殿 11/23 起開放，門票大人 1,000 円；正殿以外的付費區不用預約", "status": "verified", "source": "https://travel.watch.impress.co.jp/docs/news/2133105.html"}, {"text": "開放時間", "status": "unverified"}], "transit": {"mode": "transit", "minutes": 25, "desc": "單軌 牧志 → 首里，再走 15 分", "status": "estimated"}}, {"time": "15:30", "kind": "coffee", "name": "TAMAGUSUKU COFFEE ROASTERS", "for": [], "query": "TAMAGUSUKU COFFEE ROASTERS 那覇", "note": "老闆自己烘豆，問你喜好再一杯一杯手沖", "facts": [{"text": "8:30–18:00，週二、週五休", "status": "verified", "source": "https://www.mapple.net/article/51265/"}], "transit": {"mode": "transit", "minutes": 20, "desc": "單軌 首里 → 牧志，再走 10 分", "status": "estimated"}}, {"time": "16:30", "kind": "shop", "name": "國際通逛逛", "query": "ドン・キホーテ 国際通り店", "lat": 26.2150682, "lng": 127.6840298, "for": [], "transit": {"mode": "walk", "minutes": 10, "status": "estimated"}}, {"time": "19:00", "kind": "food", "name": "Lion 燒肉", "query": "焼肉ライオン 松山 那覇", "lat": 26.218809, "lng": 127.679596, "for": [], "fixed": true, "booking": "19:00，2 位", "facts": [{"text": "Tabelog 3.45，那霸松山", "status": "verified", "source": "https://tabelog.com/tw/okinawa/A4701/A470101/47022851/"}], "transit": {"mode": "walk", "minutes": 15, "desc": "從國際通走過去", "status": "estimated"}}], "alternates": [{"kind": "shop", "name": "浮島通", "query": "浮島通り 那覇", "swap_for": "國際通逛逛", "note": "國際通旁邊的小路，選物店跟咖啡店比較多"}, {"kind": "free", "name": "回飯店休息", "swap_for": "首里城（正殿 11/23 剛重新開放）", "note": "沒訂到時段或走累了，就回飯店躺到吃燒肉"}], "evening": [{"kind": "shop", "name": "柏青哥", "query": "パチンコ 那覇市松尾2-23-17", "note": "下午沒玩到的話，吃完燒肉走過去", "facts": [{"text": "那霸松尾 2-23-17 有一間 9:00–23:45", "status": "verified", "source": "https://p-town.dmm.com/shops/okinawa/area/47201"}]}, {"kind": "food", "name": "國際通屋台村", "query": "国際通り屋台村 那覇", "note": "最後一晚，續攤", "facts": [{"text": "11:00–24:00，全年無休，依攤位不同；牧志站走路 4 分", "status": "verified", "source": "https://www.gltjp.com/ja/directory/item/13966/"}]}]}, {"date": "2026-11-29", "theme": "早上的飛機回家", "items": [{"time": "07:00", "kind": "transit", "name": "退房，搭單軌電車去機場", "for": [], "transit": {"mode": "transit", "minutes": 12, "desc": "ゆいレール 旭橋 → 那覇空港", "status": "estimated"}}, {"time": "07:30", "kind": "transit", "name": "那霸機場 Check in，09:45 起飛", "query": "那覇空港", "lat": 26.1966997, "lng": 127.6489521, "for": []}]}]};
+
+const WEEK = ["日", "一", "二", "三", "四", "五", "六"];
+const KIND = { place: "景點", food: "吃飯", coffee: "咖啡", shop: "逛逛", transit: "移動", lodging: "住宿", free: "空檔" };
+const MODE = { transit: "transit", walk: "walking", walking: "walking", drive: "driving", driving: "driving" };
+const MODE_LABEL = { transit: "搭車", walk: "走路", walking: "走路", drive: "開車", driving: "開車" };
+
+function el(tag, attrs, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") n.className = v; else if (k === "style") n.style.cssText = v; else n.setAttribute(k, v);
+  }
+  for (const k of kids.flat(Infinity)) if (k != null && k !== false) n.append(k.nodeType ? k : String(k));
+  return n;
+}
+function parse(d) { const [y, m, dd] = d.split("-").map(Number); return new Date(y, m - 1, dd); }
+function md(d) { const x = parse(d); return `${x.getMonth() + 1}/${x.getDate()}`; }
+function wd(d) { return WEEK[parse(d).getDay()]; }
+function maps(q) { return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q); }
+function route(a, b, mode) {
+  return "https://www.google.com/maps/dir/?api=1&origin=" + encodeURIComponent(a) +
+    "&destination=" + encodeURIComponent(b) + "&travelmode=" + (MODE[mode] || "transit");
+}
+function hl(name) { const i = (TRIP.people || []).indexOf(name); return `--hl:var(--hl${(i < 0 ? 0 : i) % 4})`; }
+function factList(facts) {
+  if (!facts || !facts.length) return null;
+  return el("ul", { class: "facts" }, facts.map(f => el("li", null,
+    f.status === "verified" ? el("span", { class: "checked" }, "查過") : el("span", { class: "unchecked" }, "還沒查"),
+    el("span", null, f.text, f.source ? [" ", el("a", { href: f.source, target: "_blank", rel: "noopener" }, "出處")] : null))));
+}
+
+function entry(it, prevQuery) {
+  const t = it.transit;
+  return el("div", { class: "entry", style: it.split && it.for && it.for[0] ? hl(it.for[0]) : null },
+    t ? el("div", { class: "leg" },
+      el("span", null, MODE_LABEL[t.mode] || "移動", " ", t.minutes != null ? el("strong", null, `${t.minutes} 分`) : null,
+        t.status === "verified" ? "" : "左右"),
+      t.desc ? el("span", null, t.desc) : null,
+      prevQuery && it.query ? el("a", { href: route(prevQuery, it.query, t.mode), target: "_blank", rel: "noopener" }, "看路線") : null) : null,
+    el("h4", { class: "name" }, it._no ? el("span", { class: "no" }, it._no) : null, it.name, " ", el("span", { class: "what" }, KIND[it.kind] || "")),
+    it.note ? el("div", { class: "note" }, it.note) : null,
+    factList(it.facts),
+    it.booking ? el("div", { class: it.fixed ? "booked" : "book" }, (it.fixed ? "已訂好：" : "要先訂：") + it.booking) : null,
+    it.query && it.kind !== "free" ? el("a", { class: "go", href: maps(it.query), target: "_blank", rel: "noopener" }, "在地圖上看") : null);
+}
+
+function iso(x) { return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; }
+function lodgingOn(date) { return (TRIP.lodging || []).find(l => (l.nights || []).includes(date) && l.lat != null); }
+function dayPoints(day) {
+  const prev = parse(day.date); prev.setDate(prev.getDate() - 1);
+  const start = lodgingOn(iso(prev)), end = lodgingOn(day.date);
+  const pts = [];
+  if (start) pts.push({ lat: start.lat, lng: start.lng, label: "宿", name: start.name, q: start.query || start.name, home: true });
+  let no = 0;
+  for (const it of day.items || []) {
+    if (it.lat == null || it.lng == null || it.kind === "free") continue;
+    it._no = ++no;
+    pts.push({ lat: it.lat, lng: it.lng, label: String(no), name: it.name, q: it.query || it.name });
+  }
+  if (end) pts.push({ lat: end.lat, lng: end.lng, label: "宿", name: end.name, q: end.query || end.name, home: true });
+  return pts;
+}
+function dayRouteLink(day, pts) {
+  if (pts.length < 2) return null;
+  const drive = (day.items || []).some(it => it.transit && MODE[it.transit.mode] === "driving");
+  const mid = pts.slice(1, -1).slice(0, 9).map(p => p.q).join("|");
+  return "https://www.google.com/maps/dir/?api=1&origin=" + encodeURIComponent(pts[0].q) +
+    "&destination=" + encodeURIComponent(pts[pts.length - 1].q) +
+    (mid ? "&waypoints=" + encodeURIComponent(mid) : "") + "&travelmode=" + (drive ? "driving" : "transit");
+}
+let map = null;
+function drawMap(pts) {
+  if (map) { map.remove(); map = null; }
+  const box = document.getElementById("map");
+  if (!box) return;
+  if (!window.L || !pts.length) { box.hidden = true; return; }
+  map = L.map(box, { scrollWheelZoom: false });
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19, attribution: "&copy; OpenStreetMap contributors"
+  }).addTo(map);
+  L.polyline(pts.map(p => [p.lat, p.lng]), { color: "#1f2b4d", weight: 2, dashArray: "6 6" }).addTo(map);
+  pts.forEach(p => L.marker([p.lat, p.lng], {
+    icon: L.divIcon({ className: "", html: `<span class="pin${p.home ? " home" : ""}">${p.label}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] })
+  }).bindPopup(el("span", null, p.name)).addTo(map));
+  if (pts.length === 1) map.setView([pts[0].lat, pts[0].lng], 14);
+  else map.fitBounds(pts.map(p => [p.lat, p.lng]), { padding: [28, 28] });
+}
+
+function renderDay(day, n) {
+  const pts = dayPoints(day);
+  const routeHref = dayRouteLink(day, pts);
+  const groups = [];
+  for (const it of day.items || []) {
+    const last = groups[groups.length - 1];
+    if (it.split && last && last.split === it.split) last.items.push(it);
+    else groups.push({ split: it.split || null, items: [it] });
+  }
+  let prevQuery = null;
+  const stops = groups.map(g => {
+    const first = g.items[0];
+    const from = prevQuery;
+    const body = g.split ? el("div", { class: "split" }, g.items.map(it => entry(it, from))) : entry(first, from);
+    const last = g.items[g.items.length - 1];
+    if (last.query) prevQuery = last.query;
+    return el("div", { class: "stop k-" + (g.split ? "split" : first.kind) },
+      el("div", { class: "time" }, first.time ? el("span", { class: "swipe" }, first.time) : "", first.end ? el("small", null, "到 " + first.end) : null),
+      el("div", { class: "entries" }, body));
+  });
+  return [
+    el("div", { class: "day-head" },
+      el("div", { class: "nth" }, `第 ${n} 天，${md(day.date)} 星期${wd(day.date)}`),
+      el("h2", null, day.theme || ""),
+      day.rain_plan ? el("div", { class: "rain" }, "下雨的話，" + day.rain_plan) : null),
+    pts.length ? el("div", { class: "map-block" },
+      el("div", { class: "map", id: "map", role: "img", "aria-label": "這天的動線地圖" }),
+      routeHref ? el("a", { class: "map-link", href: routeHref, target: "_blank", rel: "noopener" }, "用 Google 地圖開整天路線") : null) : null,
+    el("div", { class: "route" }, stops),
+    day.evening && day.evening.length ? el("section", { class: "alts" },
+      el("h3", null, "吃完還有力氣的話"),
+      day.evening.map(a => el("div", { class: "entry" },
+        el("h4", { class: "name" }, a.name, " ", el("span", { class: "what" }, KIND[a.kind] || "")),
+        a.note ? el("div", { class: "note" }, a.note) : null,
+        factList(a.facts),
+        a.query ? el("a", { class: "go", href: maps(a.query), target: "_blank", rel: "noopener" }, "在地圖上看") : null))) : null,
+    day.alternates && day.alternates.length ? el("section", { class: "alts" },
+      el("h3", null, "想換的話"),
+      day.alternates.map(a => el("div", { class: "entry" },
+        el("h4", { class: "name" }, a.name, " ", el("span", { class: "what" }, KIND[a.kind] || "")),
+        a.swap_for ? el("div", { class: "swap" }, "可以換掉：" + a.swap_for) : null,
+        a.note ? el("div", { class: "note" }, a.note) : null,
+        factList(a.facts),
+        a.booking ? el("div", { class: "book" }, "要先訂：" + a.booking) : null,
+        a.query ? el("a", { class: "go", href: maps(a.query), target: "_blank", rel: "noopener" }, "在地圖上看") : null))) : null
+  ];
+}
+
+function renderOverview() {
+  const out = [];
+  out.push(el("ol", { class: "ov" }, (TRIP.days || []).map((d, i) =>
+    el("li", null, el("a", { href: "#day-" + (i + 1) },
+      el("span", { class: "d" }, `第 ${i + 1} 天，${md(d.date)} 星期${wd(d.date)}`),
+      el("span", { class: "t" }, d.theme || ""),
+      el("span", { class: "s" }, (d.items || []).filter(x => x.kind !== "transit" && x.kind !== "free").map(x => x.name).join("、")))))));
+  const books = [];
+  (TRIP.days || []).forEach(d => (d.items || []).forEach(it => { if (it.booking) books.push([d, it]); }));
+  if (books.length) out.push(el("section", { class: "block" }, el("h3", null, "出發前要先訂"),
+    el("ul", { class: "list" }, books.map(([d, it]) => el("li", null,
+      el("span", { class: "d" }, md(d.date)), el("span", null, el("strong", null, it.name), "，", it.booking))))));
+  if (TRIP.notes && TRIP.notes.length) out.push(el("section", { class: "block" }, el("h3", null, "這趟要知道的"), factList(TRIP.notes)));
+  if (TRIP.lodging && TRIP.lodging.length) out.push(el("section", { class: "block" }, el("h3", null, "住哪裡"),
+    el("ul", { class: "list" }, TRIP.lodging.map(l => el("li", null,
+      el("span", { class: "d" }, (l.nights || []).map(md).join("、")),
+      el("span", null, el("a", { href: maps(l.name + " " + (l.area || "")), target: "_blank", rel: "noopener" }, l.name), l.area ? `，${l.area}` : ""))))));
+  return out;
+}
+
+function current() {
+  const m = /^#day-(\d+)$/.exec(location.hash);
+  const n = m ? Number(m[1]) : 0;
+  return n >= 1 && n <= (TRIP.days || []).length ? n : 0;
+}
+function todayIndex() {
+  try {
+    const t = new Intl.DateTimeFormat("en-CA", { timeZone: TRIP.timezone || undefined }).format(new Date());
+    return (TRIP.days || []).findIndex(d => d.date === t) + 1;
+  } catch (e) { return 0; }
+}
+function show() {
+  const n = current();
+  document.querySelectorAll(".tab").forEach(t => t.removeAttribute("aria-current"));
+  const active = document.querySelector(`.tab[data-n="${n}"]`);
+  if (active) { active.setAttribute("aria-current", "page"); active.scrollIntoView({ block: "nearest", inline: "center" }); }
+  const day = n ? TRIP.days[n - 1] : null;
+  document.getElementById("view").replaceChildren(...(day ? renderDay(day, n) : renderOverview()));
+  drawMap(day ? dayPoints(day) : []);
+  window.scrollTo(0, 0);
+}
+
+function boot() {
+  if (!TRIP) { document.getElementById("view").textContent = "這份行程沒有資料，重新產生一次頁面。"; return; }
+  const days = (TRIP.days || []).length;
+  document.getElementById("head").replaceChildren(el("div", { style: "display:contents" },
+    el("h1", null, TRIP.title || ""),
+    el("div", { class: "when" }, `${md(TRIP.start)} 星期${wd(TRIP.start)} 到 ${md(TRIP.end)} 星期${wd(TRIP.end)}，共 ${days} 天`),
+    TRIP.status === "skeleton" ? el("div", { class: "pencil-note" }, "還在排，營業時間跟交通都還沒查。") : null));
+  const tabs = document.getElementById("tabs");
+  tabs.append(el("a", { class: "tab", href: "#overview", "data-n": "0" }, "總覽"));
+  (TRIP.days || []).forEach((d, i) => tabs.append(
+    el("a", { class: "tab", href: "#day-" + (i + 1), "data-n": String(i + 1) }, md(d.date), el("small", null, wd(d.date)))));
+  document.getElementById("foot").textContent = TRIP.checked_at ? `營業時間是 ${TRIP.checked_at} 查的，出發前一週再看一次。` : "";
+  if (!location.hash) { const t = todayIndex(); if (t) history.replaceState(null, "", "#day-" + t); }
+  window.addEventListener("hashchange", show);
+  show();
+}
+boot();
+</script>
+</body>
+</html>
