@@ -18,7 +18,7 @@
   --grid: #e3eaf0;
   --ink: #1f2b4d;
   --pencil: #6b7590;
-  --rule: #c9d3dd;
+  --rule: #93a0b4;
   --route: rgba(255, 210, 0, .55);
   --main: rgba(96, 214, 96, .45);
   --done: #9aa3b5;
@@ -58,6 +58,7 @@ li input { width: 22px; height: 22px; margin: 3px 0 0; accent-color: var(--ink);
 .when { background: var(--route); border-radius: 2px 6px 3px 5px; padding: 0 4px; font: 700 15px var(--sans); margin-right: 6px; }
 .mons { font-size: 15px; }
 .meta { font-size: 13px; color: var(--pencil); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+li.focus { background: var(--route); }
 li.got .name, li.got .mons { color: var(--done); text-decoration: line-through; }
 .pin { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--ink); display: grid; place-items: center; font: 700 12px var(--sans); color: var(--ink); background: #fff; }
 .pin.route { background: #ffe066; } .pin.main { background: #a9e9a9; }
@@ -141,6 +142,19 @@ function paint() {
   }
 }
 paint();
+
+// The itinerary links each stop's lid as #<id>; land on that one instead of the whole island.
+function focusHash() {
+  const id = Number(location.hash.slice(1));
+  for (const li of Object.values(items)) li.classList.remove("focus");
+  if (!pins[id]) return;
+  const l = LIDS.find(x => x.id === id);
+  map.setView([l.lat, l.lng], 16);
+  pins[id].openPopup();
+  items[id].classList.add("focus");
+}
+focusHash();
+window.addEventListener("hashchange", focusHash);
 </script>
 </body>
 </html>
