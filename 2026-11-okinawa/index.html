@@ -181,19 +181,25 @@ function factList(facts) {
     el("span", null, f.text, f.source ? [" ", el("a", { href: f.source, target: "_blank", rel: "noopener" }, "出處")] : null))));
 }
 
+function bookLink(x) {
+  return x.booking_url ? [" ", el("a", { href: x.booking_url, target: "_blank", rel: "noopener" }, x.fixed ? "訂位頁" : "去訂")] : null;
+}
 function subEntry(a) {
   return el("div", { class: "entry sub" },
     el("h4", { class: "name" }, a.name, " ", el("span", { class: "alt-kind" }, KIND[a.kind] || "")),
     a.get ? el("div", { class: "get" }, (a.kind === "shop" || a.kind === "place" ? "必買：" : "必吃：") + a.get) : null,
     a.note ? el("div", { class: "note" }, a.note) : null,
     factList(a.facts),
-    a.booking ? el("div", { class: "book" }, "要先訂：" + a.booking) : null,
+    a.booking ? el("div", { class: "book" }, "要先訂：" + a.booking, bookLink(a)) : null,
     a.query ? el("a", { class: "go", href: maps(a.query), target: "_blank", rel: "noopener" }, "在地圖上看") : null);
 }
 function extras(it, day) {
   const alts = (day.alternates || []).filter(a => a.swap_for === it.name);
   const treats = (day.treats || []).filter(a => a.at === it.name);
+  const adds = (day.extras || []).filter(a => a.at === it.name);
+  const wander = it.kind === "wander";
   return [
+    adds.length ? el("details", { class: "more", open: wander ? "" : null }, el("summary", null, `${wander ? "這段可以逛" : "順路可加"}（${adds.length}）`), adds.map(subEntry)) : null,
     alts.length ? el("details", { class: "more" }, el("summary", null, `可以換成（${alts.length}）`), alts.map(subEntry)) : null,
     treats.length ? el("details", { class: "more" }, el("summary", null, `順路吃點、買點（${treats.length}）`), treats.map(subEntry)) : null];
 }
@@ -214,7 +220,7 @@ function entry(it, prev, slot, day) {
     it.pokefuta != null ? lidLine(it) : null,
     it.note ? el("div", { class: "note" }, it.note) : null,
     factList(it.facts),
-    it.booking ? el("div", { class: it.fixed ? "booked" : "book" }, (it.fixed ? "已訂好：" : "要先訂：") + it.booking) : null,
+    it.booking ? el("div", { class: it.fixed ? "booked" : "book" }, (it.fixed ? "已訂好：" : "要先訂：") + it.booking, bookLink(it)) : null,
     it.query && it.kind !== "free" ? el("a", { class: "go", href: maps(it.query), target: "_blank", rel: "noopener" }, "在地圖上看") : null,
     extras(it, day));
 }
@@ -317,7 +323,7 @@ function renderOverview() {
   (TRIP.days || []).forEach(d => (d.items || []).forEach(it => { if (it.booking) books.push([d, it]); }));
   if (books.length) out.push(el("section", { class: "block" }, el("h3", null, "出發前要先訂"),
     el("ul", { class: "list" }, books.map(([d, it]) => el("li", null,
-      el("span", { class: "d" }, md(d.date)), el("span", null, el("strong", null, it.name), "，", it.booking))))));
+      el("span", { class: "d" }, md(d.date)), el("span", null, el("strong", null, it.name), "，", it.booking, bookLink(it)))))));
   if (TRIP.prep && TRIP.prep.length) out.push(el("section", { class: "block" }, el("h3", null, "出發前要準備"),
     el("ul", { class: "list" }, TRIP.prep.map(p => el("li", null,
       el("span", { class: "d" }, p.label || ""),
@@ -344,7 +350,20 @@ function renderSouvenirs() {
       factList(s.facts))))];
 }
 
+function renderAbout() {
+  const a = TRIP.about || {};
+  return [
+    (a.history || []).length ? el("section", { class: "block" }, el("h3", null, "簡單的歷史"), factList(a.history)) : null,
+    (a.known_for || []).length ? el("section", { class: "block" }, el("h3", null, "這裡有名的"),
+      a.known_for.map(k => el("div", { class: "entry" },
+        el("h4", { class: "name" }, k.name),
+        k.note ? el("div", { class: "note" }, k.note) : null,
+        factList(k.facts)))) : null];
+}
+function hasAbout() { return !!((TRIP.about || {}).history || []).length || !!((TRIP.about || {}).known_for || []).length; }
+
 function current() {
+  if (location.hash === "#about" && hasAbout()) return "a";
   if (location.hash === "#souvenirs" && (TRIP.souvenirs || []).length) return "s";
   const m = /^#day-(\d+)$/.exec(location.hash);
   const n = m ? Number(m[1]) : 0;
@@ -362,7 +381,7 @@ function show() {
   const active = document.querySelector(`.tab[data-n="${n}"]`);
   if (active) { active.setAttribute("aria-current", "page"); active.scrollIntoView({ block: "nearest", inline: "center" }); }
   const day = typeof n === "number" && n ? TRIP.days[n - 1] : null;
-  document.getElementById("view").replaceChildren(...(n === "s" ? renderSouvenirs() : day ? renderDay(day, n) : renderOverview()).filter(k => k != null));
+  document.getElementById("view").replaceChildren(...(n === "s" ? renderSouvenirs() : n === "a" ? renderAbout() : day ? renderDay(day, n) : renderOverview()).filter(k => k != null));
   drawMap(day ? dayPoints(day) : []);
   window.scrollTo(0, 0);
 }
@@ -378,6 +397,7 @@ function boot() {
   tabs.append(el("a", { class: "tab", href: "#overview", "data-n": "0" }, "總覽"));
   (TRIP.days || []).forEach((d, i) => tabs.append(
     el("a", { class: "tab", href: "#day-" + (i + 1), "data-n": String(i + 1) }, md(d.date), el("small", null, wd(d.date)))));
+  if (hasAbout()) tabs.append(el("a", { class: "tab", href: "#about", "data-n": "a" }, "認識" + (TRIP.destination || "這裡")));
   if ((TRIP.souvenirs || []).length) tabs.append(el("a", { class: "tab", href: "#souvenirs", "data-n": "s" }, "伴手禮"));
   if (TRIP.pokefuta && (TRIP.pokefuta.lids || []).length) tabs.append(el("a", { class: "tab", href: "pokefuta/" }, "Pokémon GO"));
   document.getElementById("foot").textContent = TRIP.checked_at ? `營業時間是 ${TRIP.checked_at} 查的，出發前一週再看一次。` : "";
